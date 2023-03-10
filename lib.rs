@@ -1,6 +1,5 @@
 #![cfg_attr(not(feature = "std"), no_std)]
 
-
 #[ink::contract]
 mod epassport {
 
@@ -18,41 +17,35 @@ mod epassport {
     /// Add new fields to the below struct in order
     /// to add new static storage fields to your contract.
     #[ink(storage)]
-    pub struct Epassport {
-        /// Stores a single `bool` value on the storage.
-        value: bool
-    }
+    pub struct Epassport {}
 
     impl Epassport {
         /// Constructor that initializes the `bool` value to the given `init_value`.
         #[ink(constructor)]
-        pub fn new(init_value: bool) -> Self {
-            Self { value: init_value }
+        pub fn new() -> Self {
+            Self {}
         }
 
-        /// Constructor that initializes the `bool` value to `false`.
-        ///
-        /// Constructors can delegate to other constructors.
-        #[ink(constructor)]
-        pub fn default() -> Self {
-            Self::new(Default::default())
-        }
-
-        /// A message that can be called on instantiated contracts.
-        /// This one flips the value of the stored `bool` from `true`
-        /// to `false` and vice versa.
         #[ink(message)]
-        pub fn flip(&mut self) {
-            self.value = !self.value;
+        pub fn recover_public_key(&self, signature: [u8; 65], message_hash: [u8; 32]) -> [u8; 33] {
+            let res = self.env().ecdsa_recover(&signature, &message_hash);
+            return res.unwrap();
         }
 
-        /// Simply returns the current value of our `bool`.
         #[ink(message)]
-        pub fn get(&self) -> bool {
-            self.value
+        pub fn is_valid_signature(
+            &self,
+            signature: [u8; 65],    /*dso signature*/
+            message_hash: [u8; 32], /* message_digest */
+            public_key: [u8; 33],   /* dsc*/
+        ) -> bool {
+            let res = self.env().ecdsa_recover(&signature, &message_hash);
+            if res.is_err() {
+                return false;
+            }
+            let recovered_public_key = res.unwrap();
+            return recovered_public_key == public_key;
         }
-
-       
     }
 
     /// Unit tests in Rust are normally defined within such a `#[cfg(test)]`
@@ -63,22 +56,51 @@ mod epassport {
         /// Imports all the definitions from the outer scope so we can use them here.
         use super::*;
 
-        /// We test if the default constructor does its job.
+        const SIGNATURE: [u8; 65] = [
+            195, 218, 227, 165, 226, 17, 25, 160, 37, 92, 142, 238, 4, 41, 244, 211, 18, 94, 131,
+            116, 231, 116, 255, 164, 252, 248, 85, 233, 173, 225, 26, 185, 119, 235, 137, 35, 204,
+            251, 134, 131, 186, 215, 76, 112, 17, 192, 114, 243, 102, 166, 176, 140, 180, 124, 213,
+            102, 117, 212, 89, 89, 92, 209, 116, 17, 28,
+        ];
+        const MESSAGE_HASH: [u8; 32] = [
+            167, 124, 116, 195, 220, 156, 244, 20, 243, 69, 1, 98, 189, 205, 79, 108, 213, 78, 65,
+            65, 230, 30, 17, 37, 184, 220, 237, 135, 1, 209, 101, 229,
+        ];
+        const EXPECTED_COMPRESSED_PUBLIC_KEY: [u8; 33] = [
+            3, 110, 192, 35, 209, 24, 189, 55, 218, 250, 100, 89, 40, 76, 222, 208, 202, 127, 31,
+            13, 58, 51, 242, 179, 13, 63, 19, 22, 252, 164, 226, 248, 98,
+        ];
+
         #[ink::test]
-        fn default_works() {
-            let epassport = Epassport::default();
-            assert_eq!(epassport.get(), false);
+        fn recover_public_key_works() {
+            let epassport = Epassport::new();
+            let result = epassport.recover_public_key(SIGNATURE, MESSAGE_HASH);
+            assert_eq!(result, EXPECTED_COMPRESSED_PUBLIC_KEY);
         }
 
-        /// We test a simple use case of our contract.
         #[ink::test]
-        fn it_works() {
-            let mut epassport = Epassport::new(false);
-            assert_eq!(epassport.get(), false);
-            epassport.flip();
-            assert_eq!(epassport.get(), true);
+        fn should_return_true_for_valid_signature() {
+            let epassport = Epassport::new();
+            let result = epassport.is_valid_signature(
+                SIGNATURE,
+                MESSAGE_HASH,
+                EXPECTED_COMPRESSED_PUBLIC_KEY,
+            );
+            assert_eq!(true, result)
         }
 
-        
+        #[ink::test]
+        fn should_return_false_for_invalid_signature() {
+            let epassport = Epassport::new();
+            let mut incorrect_signature = SIGNATURE;
+            incorrect_signature[0] = SIGNATURE[0] + 10;
+            let result = epassport.is_valid_signature(
+                incorrect_signature,
+                MESSAGE_HASH,
+                EXPECTED_COMPRESSED_PUBLIC_KEY,
+            );
+            assert_eq!(false, result);
+        }
+
     }
 }
