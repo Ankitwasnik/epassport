@@ -20,7 +20,7 @@ mod epassport {
     pub struct Epassport {}
 
     impl Epassport {
-        /// Constructor that initializes the `bool` value to the given `init_value`.
+
         #[ink(constructor)]
         pub fn new() -> Self {
             Self {}
@@ -46,6 +46,16 @@ mod epassport {
             let recovered_public_key = res.unwrap();
             return recovered_public_key == public_key;
         }
+
+        
+        #[ink(message)]
+        pub fn validate_cert(&self, dsc_cert_bytes: [u8; 1424], csca_cert_bytes: [u8; 1455]) -> bool {
+            let dsc = x509_signature::parse_certificate(&dsc_cert_bytes).unwrap();
+            let csca = x509_signature::parse_certificate(&csca_cert_bytes).unwrap();
+            let res = dsc.check_issued_by(&csca);
+            return res.is_ok();
+        }
+
     }
 
     /// Unit tests in Rust are normally defined within such a `#[cfg(test)]`
@@ -101,6 +111,42 @@ mod epassport {
             );
             assert_eq!(false, result);
         }
+
+        /* #[ink::test]
+        fn should_validate_example_cert() {
+            let epassport = Epassport::new();
+            let dsc = include_bytes!("./test/dsc.crt");
+            let ca = include_bytes!("./test/ca.crt");
+            let is_valid = epassport.validate_cert(
+                *dsc,
+                *ca
+            );
+            assert_eq!(true, is_valid);
+        } */
+
+        #[ink::test]
+        fn should_validate_local_cert() {
+            let epassport = Epassport::new();
+            let dsc = include_bytes!("./test/local_intermediate.crt");
+            let ca = include_bytes!("./test/local_ca.crt");
+            let is_valid = epassport.validate_cert(
+                *dsc,
+                *ca
+            );
+            assert_eq!(true, is_valid);
+        }
+
+        /* #[ink::test]
+        fn should_return_false_for_incorrect_ca() {
+            let epassport = Epassport::new();
+            let dsc = include_bytes!("./test/local_intermediate.crt");
+            let ca = include_bytes!("./test/ca.crt");
+            let is_valid = epassport.validate_cert(
+                *dsc,
+                *ca
+            );
+            assert_eq!(false, is_valid);
+        } */
 
     }
 }
