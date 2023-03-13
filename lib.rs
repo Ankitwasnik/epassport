@@ -17,13 +17,30 @@ mod epassport {
     /// Add new fields to the below struct in order
     /// to add new static storage fields to your contract.
     #[ink(storage)]
-    pub struct Epassport {}
+    pub struct Epassport {
+        csca1: Vec<u8>
+    }
 
     impl Epassport {
 
         #[ink(constructor)]
         pub fn new() -> Self {
-            Self {}
+            let csca1_vec:Vec<u8> = Vec::new();
+            Self {csca1: csca1_vec}
+        }
+
+        #[ink(message)]
+        pub fn set_csca1(&mut self, caca1_crt: Vec<u8>) {
+            let parsed_cert = x509_signature::parse_certificate(&caca1_crt);
+            if parsed_cert.is_err() {
+                panic!("Invalid certificate");
+            }
+            self.csca1 = caca1_crt;
+        }
+
+        #[ink(message)]
+        pub fn get_csca1(&self) -> Vec<u8> {
+            self.csca1.clone()
         }
 
         #[ink(message)]
@@ -82,20 +99,43 @@ mod epassport {
         ];
 
         #[ink::test]
+        fn should_set_csca1_if_valid() {
+            let mut epassport = Epassport::new();
+            let ca_crt = include_bytes!("./test/local_ca.crt").to_vec();
+            let ca_crt_clone = ca_crt.clone();
+            
+            epassport.set_csca1(ca_crt);
+
+            assert_eq!(ca_crt_clone, epassport.get_csca1());
+        }
+
+        #[ink::test]
+        #[should_panic(expected = "Invalid certificate")]
+        fn should_not_set_csca1_if_invalid() {
+            let mut epassport = Epassport::new();
+            
+            epassport.set_csca1("abc".as_bytes().to_vec());
+        }
+
+        #[ink::test]
         fn recover_public_key_works() {
             let epassport = Epassport::new();
+            
             let result = epassport.recover_public_key(SIGNATURE, MESSAGE_HASH);
+
             assert_eq!(result, EXPECTED_COMPRESSED_PUBLIC_KEY);
         }
 
         #[ink::test]
         fn should_return_true_for_valid_signature() {
             let epassport = Epassport::new();
+            
             let result = epassport.is_valid_signature(
                 SIGNATURE,
                 MESSAGE_HASH,
                 EXPECTED_COMPRESSED_PUBLIC_KEY,
             );
+
             assert_eq!(true, result)
         }
 
@@ -104,11 +144,13 @@ mod epassport {
             let epassport = Epassport::new();
             let mut incorrect_signature = SIGNATURE;
             incorrect_signature[0] = SIGNATURE[0] + 10;
+            
             let result = epassport.is_valid_signature(
                 incorrect_signature,
                 MESSAGE_HASH,
                 EXPECTED_COMPRESSED_PUBLIC_KEY,
             );
+            
             assert_eq!(false, result);
         }
 
@@ -117,10 +159,12 @@ mod epassport {
             let epassport = Epassport::new();
             let dsc = include_bytes!("./test/dsc.crt").to_vec();
             let ca = include_bytes!("./test/ca.crt").to_vec();
+            
             let is_valid = epassport.validate_cert(
                 dsc,
                 ca
             );
+
             assert_eq!(true, is_valid);
         }
 
@@ -129,10 +173,12 @@ mod epassport {
             let epassport = Epassport::new();
             let dsc = include_bytes!("./test/local_intermediate.crt").to_vec();
             let ca = include_bytes!("./test/local_ca.crt").to_vec();
+            
             let is_valid = epassport.validate_cert(
                 dsc,
                 ca
             );
+
             assert_eq!(true, is_valid);
         }
 
@@ -141,10 +187,12 @@ mod epassport {
             let epassport = Epassport::new();
             let dsc = include_bytes!("./test/local_intermediate.crt").to_vec();
             let ca = include_bytes!("./test/ca.crt").to_vec();
+            
             let is_valid = epassport.validate_cert(
                 dsc,
                 ca
             );
+
             assert_eq!(false, is_valid);
         }
 
