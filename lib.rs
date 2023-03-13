@@ -49,7 +49,7 @@ mod epassport {
 
         
         #[ink(message)]
-        pub fn validate_cert(&self, dsc_cert_bytes: [u8; 1424], csca_cert_bytes: [u8; 1455]) -> bool {
+        pub fn validate_cert(&self, dsc_cert_bytes: Vec<u8>, csca_cert_bytes: Vec<u8>) -> bool {
             let dsc = x509_signature::parse_certificate(&dsc_cert_bytes).unwrap();
             let csca = x509_signature::parse_certificate(&csca_cert_bytes).unwrap();
             let res = dsc.check_issued_by(&csca);
@@ -112,41 +112,41 @@ mod epassport {
             assert_eq!(false, result);
         }
 
-        /* #[ink::test]
+        #[ink::test]
         fn should_validate_example_cert() {
             let epassport = Epassport::new();
-            let dsc = include_bytes!("./test/dsc.crt");
-            let ca = include_bytes!("./test/ca.crt");
+            let dsc = include_bytes!("./test/dsc.crt").to_vec();
+            let ca = include_bytes!("./test/ca.crt").to_vec();
             let is_valid = epassport.validate_cert(
-                *dsc,
-                *ca
-            );
-            assert_eq!(true, is_valid);
-        } */
-
-        #[ink::test]
-        fn should_validate_local_cert() {
-            let epassport = Epassport::new();
-            let dsc = include_bytes!("./test/local_intermediate.crt");
-            let ca = include_bytes!("./test/local_ca.crt");
-            let is_valid = epassport.validate_cert(
-                *dsc,
-                *ca
+                dsc,
+                ca
             );
             assert_eq!(true, is_valid);
         }
 
-        /* #[ink::test]
+        #[ink::test]
+        fn should_validate_local_cert() {
+            let epassport = Epassport::new();
+            let dsc = include_bytes!("./test/local_intermediate.crt").to_vec();
+            let ca = include_bytes!("./test/local_ca.crt").to_vec();
+            let is_valid = epassport.validate_cert(
+                dsc,
+                ca
+            );
+            assert_eq!(true, is_valid);
+        }
+
+        #[ink::test]
         fn should_return_false_for_incorrect_ca() {
             let epassport = Epassport::new();
-            let dsc = include_bytes!("./test/local_intermediate.crt");
-            let ca = include_bytes!("./test/ca.crt");
+            let dsc = include_bytes!("./test/local_intermediate.crt").to_vec();
+            let ca = include_bytes!("./test/ca.crt").to_vec();
             let is_valid = epassport.validate_cert(
-                *dsc,
-                *ca
+                dsc,
+                ca
             );
             assert_eq!(false, is_valid);
-        } */
+        }
 
     }
 }
