@@ -2,6 +2,9 @@
 
 #[ink::contract]
 mod epassport {
+    use ink::{
+        prelude::vec::Vec,
+    };
 
     /*
         Functions:
@@ -25,13 +28,13 @@ mod epassport {
 
         #[ink(constructor)]
         pub fn new() -> Self {
-            let csca1_vec:Vec<u8> = Vec::new();
+            let csca1_vec = Vec::new();
             Self {csca1: csca1_vec}
         }
 
         #[ink(message)]
         pub fn set_csca1(&mut self, caca1_crt: Vec<u8>) {
-            let parsed_cert = x509_signature::parse_certificate(&caca1_crt);
+            let parsed_cert = barebones_x509::parse_certificate(&caca1_crt);
             if parsed_cert.is_err() {
                 panic!("Invalid certificate");
             }
@@ -67,8 +70,8 @@ mod epassport {
         
         #[ink(message)]
         pub fn validate_cert(&self, dsc_cert_bytes: Vec<u8>, csca_cert_bytes: Vec<u8>) -> bool {
-            let dsc = x509_signature::parse_certificate(&dsc_cert_bytes).unwrap();
-            let csca = x509_signature::parse_certificate(&csca_cert_bytes).unwrap();
+            let dsc = barebones_x509::parse_certificate(&dsc_cert_bytes).unwrap();
+            let csca = barebones_x509::parse_certificate(&csca_cert_bytes).unwrap();
             let res = dsc.check_issued_by(&csca);
             return res.is_ok();
         }
